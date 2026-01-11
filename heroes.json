@@ -1,0 +1,21 @@
+[
+  { "id": "murphy", "name": "Murphy", "base": 14, "inc": 0.10, "cat": "Tank", "target": "front" },
+  { "id": "william", "name": "William", "base": 21, "inc": 0.30, "cat": "Tank", "target": "self" },
+  { "id": "marshall", "name": "Marshall", "base": 9, "inc": 0.10, "cat": "Tank", "target": "team" },
+  { "id": "scarlett", "name": "Scarlett", "base": 20, "inc": 0.20, "cat": "Tank", "target": "self" },
+  { "id": "kimberly", "name": "Kimberly", "base": 0, "inc": 0.10, "cat": "Tank", "target": "team" },
+  { "id": "stetman", "name": "Stetman", "base": 0, "inc": 0.10, "cat": "Tank", "target": "team" },
+  { "id": "violet", "name": "Violet", "base": 7, "inc": 0.12, "cat": "Tank", "target": "front" },
+  { "id": "lucius", "name": "Lucius", "base": 25, "inc": 0.33, "cat": "Aircraft", "target": "team" },
+  { "id": "carlie", "name": "Carlie", "base": 28, "inc": 0.40, "cat": "Aircraft", "target": "self" },
+  { "id": "dva", "name": "DVA", "base": 0, "inc": 0.15, "cat": "Aircraft", "target": "team" },
+  { "id": "morrison", "name": "Morrison", "base": 0, "inc": 0.10, "cat": "Aircraft", "target": "team" },
+  { "id": "shuyler", "name": "Shuyler", "base": 0, "inc": 0.10, "cat": "Aircraft", "target": "team" },
+  { "id": "sarah", "name": "Sarah", "base": 0, "inc": 0.10, "cat": "Aircraft", "target": "team" },
+  { "id": "mcgregor", "name": "McGregor", "base": 21, "inc": 0.30, "cat": "Missile", "target": "self" },
+  { "id": "adam", "name": "Adam", "base": 10, "inc": 0.10, "cat": "Missile", "target": "front" },
+  { "id": "swift", "name": "Swift", "base": 5, "inc": 0.10, "cat": "Missile", "target": "self" },
+  { "id": "tesla", "name": "Tesla", "base": 0, "inc": 0.10, "cat": "Missile", "target": "team" },
+  { "id": "fiona", "name": "Fiona", "base": 0, "inc": 0.10, "cat": "Missile", "target": "team" },
+  { "id": "venom", "name": "Venom", "base": 0, "inc": 0.10, "cat": "Missile", "target": "team" }
+]
