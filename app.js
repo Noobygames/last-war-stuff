@@ -24,6 +24,12 @@ let db = {
     { name: "Squad 2", slots: Array.from({ length: 5 }, createEmptySlot) },
     { name: "Squad 3", slots: Array.from({ length: 5 }, createEmptySlot) },
   ],
+  globalBaseStats: {
+    sf_tech_1: { level: 0, calculatedPhysicalReduction: 0, calculatedEnergyReduction: 0 },
+    sf_tech_2: { level: 0, calculatedPhysicalReduction: 0, calculatedEnergyReduction: 0 },
+    drone_lvl: { level: 0, calculatedPhysicalReduction: 0, calculatedEnergyReduction: 0 },
+    other_red: { level: 0, calculatedPhysicalReduction: 0, calculatedEnergyReduction: 0 },
+  },
 };
 
 /**
@@ -39,17 +45,14 @@ async function init() {
     const mobileContainer = document.getElementById("mobile-config-container");
 
     if (desktopConfig && mobileContainer) {
-      mobileContainer.innerHTML = ""; // Container leeren
+      mobileContainer.innerHTML = "";
 
-      // Kinder klonen (true = deep clone)
       Array.from(desktopConfig.children).forEach((child) => {
         const clone = child.cloneNode(true);
 
-        // IDs im Klon direkt ändern, BEVOR sie ins DOM kommen
         const inputs = clone.querySelectorAll("input");
         inputs.forEach((input) => {
           input.id = "mobile-" + input.id;
-          // Event Listener müssen hier neu gebunden werden, da sie nicht mitgeklont werden!
         });
 
         mobileContainer.appendChild(clone);
@@ -92,6 +95,65 @@ async function init() {
   document.getElementById("select-squad-1").addEventListener("click", () => switchSquad(1));
   document.getElementById("select-squad-2").addEventListener("click", () => switchSquad(2));
   updateSquadSelectorUI(db.currentSquadIdx);
+  restoreGlobalInputs();
+}
+
+function restoreGlobalInputs() {
+  if (!db.globalBaseStats) return;
+
+  const inputs = document.querySelectorAll("input");
+
+  inputs.forEach((input) => {
+    const id = input.id;
+
+    // Mapping Keys zu IDs
+    const keys = ["sf_tech_1", "sf_tech_2", "drone_lvl", "other_red"];
+
+    keys.forEach((key) => {
+      if (id.includes(key.replace(/_/g, "-"))) {
+        if (db.globalBaseStats[key]) {
+          input.value = db.globalBaseStats[key].level || 0;
+        }
+      }
+    });
+  });
+}
+
+function updateGlobalStat(key, value) {
+  if (!db.globalBaseStats) db.globalBaseStats = {};
+
+  let calculatedEnergyReduction = 0;
+  let calculatedPhysicalReduction = 0;
+  let valueInt = parseInt(value) || 0;
+  console.log(`updateGlobalStat: ${key} ist nun Level ${valueInt}`);
+
+  if (key === "drone_lvl") {
+    if (valueInt >= 200) {
+      calculatedPhysicalReduction = 5;
+      calculatedEnergyReduction = 5;
+      console.log("drone level >= 200 adding 5% damage reduction");
+    }
+  }
+
+  if (key === "sf_tech_1") {
+    calculatedPhysicalReduction = 1.5 * valueInt;
+    calculatedEnergyReduction = 1.5 * valueInt;
+    console.log(`special forces tech 1 found - adding: ${calculatedPhysicalReduction} for physical and energy reduction`);
+  }
+
+  if (key === "sf_tech_2") {
+    calculatedPhysicalReduction = 1.5 * valueInt;
+    calculatedEnergyReduction = 1.5 * valueInt;
+    console.log(`special forces tech 1 found - adding: ${calculatedPhysicalReduction} for physical and energy reduction`);
+  }
+
+  db.globalBaseStats[key] = {
+    level: parseInt(value) || 0,
+    calculatedPhysicalReduction: calculatedPhysicalReduction,
+    calculatedEnergyReduction: calculatedEnergyReduction,
+  };
+
+  saveAndRefresh();
 }
 
 async function loadHeroData() {
@@ -150,8 +212,21 @@ function loadDatabase() {
     db = data;
   } catch (e) {
     console.error("Local Storage Daten korrupt, setze zurück:", e);
-    // data bleibt auf dem Default-Wert, Datenbank wird quasi resettet
   }
+
+  const currentSquad = db.squads[db.currentSquadIdx];
+
+  currentSquad.slots.forEach((hero, index) => {
+    const slotElement = document.getElementById(`slot-${index}`);
+
+    if (slotElement) {
+      if (hero) {
+        slotElement.classList.add("occupied");
+      } else {
+        slotElement.classList.remove("occupied");
+      }
+    }
+  });
 }
 
 function openHeroModal(slotIdx) {
@@ -259,15 +334,15 @@ function assignHeroToSlot(heroId, slotIdx) {
   const heroBase = HERO_DATA.find((h) => h.id === heroId);
   if (!heroBase) return;
 
+  console.log(`assignHeroToSlot: heroId: ${heroId} slotIdx: ${slotIdx} heroBase: ${heroBase}`);
+
+  if (!db.heroStats) db.heroStats = {};
+
   const currentIdx = db.currentSquadIdx;
-  let savedStats = null;
 
-  const currentSlotHero = db.squads[currentIdx].slots[slotIdx];
-  console.log(`assignHeroToSlot: heroId: ${heroId} slotIdx: ${slotIdx} heroBase: ${heroBase} currentSlotHero: ${currentSlotHero}`);
+  let savedStats = db.heroStats[heroId];
 
-  if (currentSlotHero && currentSlotHero.id === heroId) {
-    savedStats = currentSlotHero;
-  } else {
+  if (!savedStats) {
     for (const squad of db.squads) {
       const found = squad.slots.find((s) => s?.id === heroId);
       if (found) {
@@ -295,6 +370,8 @@ function assignHeroToSlot(heroId, slotIdx) {
     cat: heroBase.cat,
     ...newValues,
   };
+
+  document.getElementById(`slot-${slotIdx}`).classList.add("occupied");
 
   saveAndRefresh();
 }
@@ -329,70 +406,70 @@ function handleDragLeave(ev) {
  * BERECHNUNG
  */
 function calculateDR() {
-  const baseSF = parseFloat(document.getElementById("base-sf")?.value) || 0;
-  const baseDrone = parseFloat(document.getElementById("base-drone")?.value) || 0;
-  const baseExtra = parseFloat(document.getElementById("base-extra")?.value) || 0;
-  const globalBaseDR = baseSF + baseDrone + baseExtra;
-
   const currentSquadIdx = db.currentSquadIdx;
   const squadData = db.squads[currentSquadIdx];
 
   if (!squadData || !squadData.slots) return;
 
-  // const allHeroIds = squadData.slots.map(s => s?.id);
-
-  let frontlineBonus = 0;
-  let backlineBonus = 0;
-
-  // if (allHeroIds.includes("williams")) frontlineBonus += 10;
-  // if (allHeroIds.includes("marshall")) backlineBonus += 3; // Beispiel
-
   squadData.slots.forEach((heroData, slotIdx) => {
-    const drElement = document.getElementById(`dr-value-${slotIdx}`);
+    console.log(
+      `calculateDR: slot: ${slotIdx} drone level: ${db.globalBaseStats.drone_lvl.level} drone edr: ${db.globalBaseStats.drone_lvl.calculatedEnergyReduction} drone pdr: ${db.globalBaseStats.drone_lvl.calculatedPhysicalReduction}`,
+    );
 
-    if (!drElement) return;
+    const physicalDRElement = document.getElementById(`pdr-value-${slotIdx}`);
+    if (!physicalDRElement) return;
+
+    const energyDRElement = document.getElementById(`edr-value-${slotIdx}`);
+    if (!energyDRElement) return;
 
     if (!heroData || !heroData.id) {
-      drElement.innerText = "0.0%";
-      drElement.className = "text-2xl font-black italic text-gray-600 leading-none"; // Reset Style
+      physicalDRElement.innerText = "0.0%";
+      energyDRElement.innerText = "0.0%";
+
       return;
     }
 
     const heroBase = HERO_DATA.find((h) => h.id === heroData.id);
     if (!heroBase) return;
 
-    let totalDR = globalBaseDR;
-
     if (heroBase.skills.tactics?.hasDR) {
-      const lvl = heroData.skills.tactics || 1;
-      const base = heroBase.skills.tactics.base || 0;
-      const inc = heroBase.skills.tactics.inc || 0;
-      totalDR += base + lvl * inc;
+      // const lvl = heroData.skills.tactics || 1;
+      // const base = heroBase.skills.tactics.base || 0;
+      // const inc = heroBase.skills.tactics.inc || 0;
     }
 
     if (heroBase.skills.passive?.hasDR) {
-      const lvl = heroData.skills.passive || 1;
-      const base = heroBase.skills.passive.base || 0;
-      const inc = heroBase.skills.passive.inc || 0;
-      totalDR += base + (lvl - 1) * inc;
+      // const lvl = heroData.skills.passive || 1;
+      // const base = heroBase.skills.passive.base || 0;
+      // const inc = heroBase.skills.passive.inc || 0;
     }
-
-    // Reihe (Front/Back)
-    if (slotIdx === 0 || slotIdx === 1) totalDR += frontlineBonus;
-    else totalDR += backlineBonus;
-
-    drElement.innerText = totalDR.toFixed(1) + "%";
 
     // Klassen-Management (wir überschreiben className komplett oder nutzen classList)
     // Hier sicherstellen, dass wir die Tailwind-Basisklassen behalten
     const baseClasses = "text-2xl font-black italic leading-none drop-shadow-md transition-colors duration-300";
+    const baseStats = db.globalBaseStats;
+    let totalPhysicalReduction =
+      baseStats.drone_lvl.calculatedPhysicalReduction + baseStats.sf_tech_1.calculatedPhysicalReduction + baseStats.sf_tech_2.calculatedPhysicalReduction;
 
-    if (totalDR >= 85) {
-      drElement.className = `${baseClasses} text-red-500`;
-    } else if (totalDR >= 70) {
-      drElement.className = `${baseClasses} text-yellow-400`;
+    physicalDRElement.innerText = totalPhysicalReduction.toFixed(1) + "%";
+    if (totalPhysicalReduction >= 85) {
+      physicalDRElement.className = `${baseClasses} text-red-500`;
+    } else if (totalPhysicalReduction >= 70) {
+      physicalDRElement.className = `${baseClasses} text-yellow-400`;
     } else {
-      drElement.className = `${baseClasses} text-blue-500`;
+      physicalDRElement.className = `${baseClasses} text-blue-500`;
+    }
+
+    let totalEnergyDamageReduction =
+      db.globalBaseStats.drone_lvl.calculatedEnergyReduction + baseStats.sf_tech_1.calculatedEnergyReduction + baseStats.sf_tech_2.calculatedEnergyReduction;
+    energyDRElement.innerText = totalEnergyDamageReduction.toFixed(1) + "%";
+
+    if (totalEnergyDamageReduction >= 85) {
+      energyDRElement.className = `${baseClasses} text-red-500`;
+    } else if (totalEnergyDamageReduction >= 70) {
+      energyDRElement.className = `${baseClasses} text-yellow-400`;
+    } else {
+      energyDRElement.className = `${baseClasses} text-blue-500`;
     }
   });
 }
@@ -480,34 +557,25 @@ function refreshSquadGrid() {
 
 function removeFromSquad(slotIdx) {
   const squad = db.squads[db.currentSquadIdx];
+  const hero = squad.slots[slotIdx];
 
-  if (squad && squad.slots) {
-    const currentSlotHero = squad.slots[slotIdx];
+  if (squad && hero) {
+    if (!db.heroStats) {
+      db.heroStats = {};
+    }
+
+    db.heroStats[hero.id] = {
+      ex_lvl: hero.ex_lvl || 0,
+      stars: hero.stars || 0,
+      skills: { ...hero.skills },
+    };
+
+    console.log(`Stats für ${hero.name} gesichert.`, db.heroStats[hero.id]);
     squad.slots[slotIdx] = null;
 
-      const newValues = currentSlotHero
-    ? {
-        ex_lvl: currentSlotHero.ex_lvl,
-        stars: currentSlotHero.stars || 0,
-        skills: { ...currentSlotHero.skills },
-      }
-    : {
-        ex_lvl: 0,
-        stars: 0,
-        skills: { tactics: 1, passive: 1 },
-      };
-
-    db.squads[db.currentSquadIdx].slots[slotIdx] = {
-    id: currentSlotHero.id,
-    name: currentSlotHero.name,
-    cat: currentSlotHero.cat,
-    ...newValues,
-  };
-
+    document.getElementById(`slot-${slotIdx}`).classList.remove("occupied");
 
     saveAndRefresh();
-
-    console.log(`Slot ${slotIdx} wurde geleert.`);
   }
 }
 
@@ -574,10 +642,6 @@ function removeFromSlot(slotId) {
   delete db.squads[db.currentSquadIdx].slots[slotId];
   saveAndRefresh();
 }
-function updateBaseDR() {
-  db.global = document.getElementById("input-base-dr").value;
-  saveAndRefresh();
-}
 
 function switchSquad(n) {
   db.currentSquadIdx = n;
@@ -598,6 +662,7 @@ function switchSquad(n) {
   }
 
   updateSquadSelectorUI(n);
+  updateMetaStatus();
   saveAndRefresh();
 }
 
@@ -628,13 +693,33 @@ function updateSquadSelectorUI(activeIdx) {
 }
 
 function saveAndRefresh() {
-  calculateDR();
-
   localStorage.setItem("dr_analyst_v4_db", JSON.stringify(db));
 
+  calculateDR();
   refreshSquadGrid();
   updateMetaStatus();
   updateSquadButtons();
+  updateHeroStats();
+}
+
+function updateHeroStats() {
+  if (!db.heroStats) {
+    db.heroStats = {};
+  }
+
+  db.squads.forEach((squad) => {
+    squad.slots.forEach((hero) => {
+      if (hero && hero.id) {
+        db.heroStats[hero.id] = {
+          ex_lvl: hero.ex_lvl || 0,
+          stars: hero.stars || 0,
+          skills: hero.skills ? { ...hero.skills } : { tactics: 1, passive: 1 },
+        };
+      }
+    });
+  });
+
+  console.log("Globale Helden-Stats wurden synchronisiert:", db.heroStats);
 }
 
 function showToast(message, type = "error") {
@@ -865,7 +950,7 @@ function applyMetaVisuals(metaType) {
     showToast(`You have chosen a META build! These are strong`, "success");
   }
 
-  const slots = document.querySelectorAll(".hero-slot-card");
+  const slots = document.querySelectorAll(".squad-slot");
   slots.forEach((card) => {
     if (metaType) {
       // Wenn eine Meta (z.B. air41, tank41, fullTank) erkannt wurde
@@ -882,17 +967,6 @@ function handleImageError(img) {
   img.onerror = null;
   // img.src = "img/placeholder.jpg";
   img.src = "img/new-turtle.png";
-}
-
-function resetFullDatabase() {
-  if (confirm("Möchtest du wirklich alle gespeicherten Squads und Einstellungen löschen?")) {
-    // Löscht nur die spezifischen Keys deiner App
-    localStorage.removeItem("dr_analyst_v4_db");
-    localStorage.removeItem("dr_analyst_custom_heroes");
-
-    // Lädt die Seite neu, um den sauberen Zustand aus init() zu triggern
-    location.reload();
-  }
 }
 
 let selectedHeroId = null;

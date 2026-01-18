@@ -12,7 +12,7 @@
 }
 
 .meta-active {
-  animation: meta-glow 1.5s infinite ease-in-out;
+  animation: meta-glow 4s infinite ease-in-out !important;
   border-style: solid !important;
 }
 
