@@ -1,31 +1,42 @@
 {
-  "name": "last-war-stuff",
+  "name": "lw-calculators",
+  "homepage": "https://Noobygames.github.io/last-war-calculators",  
+  "private": true,
+  "version": "0.0.0",
   "type": "module",
-  "version": "1.0.0",
-  "description": "An advanced strategy tool designed to calculate and optimize **Damage Reduction (DR)** for your hero squads. This tool uses specific scaling data to help players reach the 75% DR cap effectively.",
-  "main": "app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "vite",
+    "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "deadcode": "knip",
-    "check": "npm run lint && npm run deadcode"
+    "preview": "vite preview",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist"
+    
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Noobygames/last-war-stuff.git"
+  "dependencies": {
+    "@tailwindcss/vite": "^4.1.18",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/Noobygames/last-war-stuff/issues"
-  },
-  "homepage": "https://github.com/Noobygames/last-war-stuff#readme",
   "devDependencies": {
-    "@eslint/js": "^9.39.2",
-    "eslint": "^9.39.2",
-    "globals": "^17.0.0",
-    "knip": "^5.82.0",
-    "typescript": "^5.9.3"
+    "@eslint/js": "^9.39.1",
+    "@types/node": "^24.10.1",
+    "@types/react": "^19.2.5",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.1",
+    "autoprefixer": "^10.4.23",
+    "eslint": "^9.39.1",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "gh-pages": "^6.3.0",
+    "globals": "^16.5.0",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.18",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.46.4",
+    "vite": "npm:rolldown-vite@7.2.5"
+  },
+  "overrides": {
+    "vite": "npm:rolldown-vite@7.2.5"
   }
 }
