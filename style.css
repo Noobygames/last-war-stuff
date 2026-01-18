@@ -46,6 +46,11 @@
   width: 100%;
 }
 
+.input-minimal:focus {
+  outline: none;
+  border-color: #60a5fa;
+}
+
 /* Visuelles
  Feedback beim Drüberziehen (Dragover) */
 .squad-slot.drag-over {
