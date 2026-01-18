@@ -1,0 +1,31 @@
+{
+  "name": "last-war-stuff",
+  "type": "module",
+  "version": "1.0.0",
+  "description": "An advanced strategy tool designed to calculate and optimize **Damage Reduction (DR)** for your hero squads. This tool uses specific scaling data to help players reach the 75% DR cap effectively.",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "eslint .",
+    "deadcode": "knip",
+    "check": "npm run lint && npm run deadcode"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Noobygames/last-war-stuff.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Noobygames/last-war-stuff/issues"
+  },
+  "homepage": "https://github.com/Noobygames/last-war-stuff#readme",
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "eslint": "^9.39.2",
+    "globals": "^17.0.0",
+    "knip": "^5.82.0",
+    "typescript": "^5.9.3"
+  }
+}

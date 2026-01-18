@@ -1,5 +1,4 @@
 let HERO_DATA = [];
-let currentSquad = 1;
 let currentFilter = "All";
 let searchQuery = "";
 window.currentHeroStats = {};
@@ -40,21 +39,20 @@ async function init() {
     const mobileContainer = document.getElementById("mobile-config-container");
 
     if (desktopConfig && mobileContainer) {
-      mobileContainer.innerHTML = desktopConfig.innerHTML;
+      mobileContainer.innerHTML = ""; // Container leeren
 
-      const mobileInputs = mobileContainer.querySelectorAll("input");
+      // Kinder klonen (true = deep clone)
+      Array.from(desktopConfig.children).forEach((child) => {
+        const clone = child.cloneNode(true);
 
-      mobileInputs.forEach((mInput) => {
-        const originalId = mInput.id;
-        mInput.id = "mobile-" + originalId;
-
-        mInput.addEventListener("input", (e) => {
-          const dInput = document.getElementById(originalId);
-          if (dInput) {
-            dInput.value = e.target.value;
-            saveAndRefresh();
-          }
+        // IDs im Klon direkt ändern, BEVOR sie ins DOM kommen
+        const inputs = clone.querySelectorAll("input");
+        inputs.forEach((input) => {
+          input.id = "mobile-" + input.id;
+          // Event Listener müssen hier neu gebunden werden, da sie nicht mitgeklont werden!
         });
+
+        mobileContainer.appendChild(clone);
       });
     }
 
@@ -78,6 +76,22 @@ async function init() {
     // Fallback: Falls alles crashed, leeres Array aber Code läuft weiter
     HERO_DATA = [];
   }
+
+  for (let i = 0; i < 5; i++) {
+    const slot = document.getElementById(`slot-${i}`);
+    if (!slot) continue;
+
+    // slot.addEventListener("dragstart", handleDragStart);
+    slot.addEventListener("dragover", handleDragOver);
+    slot.addEventListener("dragleave", handleDragLeave);
+    slot.addEventListener("drop", (e) => handleDrop(e, i)); // Hier können wir 'i' festbinden, da sich der Slot-Index nie ändert
+    slot.addEventListener("click", () => handleSlotClick(i));
+  }
+
+  document.getElementById("select-squad-0").addEventListener("click", () => switchSquad(0));
+  document.getElementById("select-squad-1").addEventListener("click", () => switchSquad(1));
+  document.getElementById("select-squad-2").addEventListener("click", () => switchSquad(2));
+  updateSquadSelectorUI(db.currentSquadIdx);
 }
 
 async function loadHeroData() {
@@ -113,26 +127,31 @@ function loadDatabase() {
     console.warn("No data found in local storage. Creating new db");
   }
 
-  data = JSON.parse(saved);
+  try {
+    data = JSON.parse(saved);
 
-  if (data.squads && !Array.isArray(data.squads)) {
-    data.squads = Object.values(data.squads);
-  }
-
-  data.squads.forEach((squad) => {
-    if (squad.slots && !Array.isArray(squad.slots)) {
-      let newSlots = [null, null, null, null, null];
-      Object.keys(squad.slots).forEach((key) => {
-        const idx = parseInt(key);
-        if (idx >= 0 && idx < 5) {
-          newSlots[idx] = squad.slots[key];
-        }
-      });
-      squad.slots = newSlots;
+    if (data.squads && !Array.isArray(data.squads)) {
+      data.squads = Object.values(data.squads);
     }
-  });
 
-  db = data;
+    data.squads.forEach((squad) => {
+      if (squad.slots && !Array.isArray(squad.slots)) {
+        let newSlots = [null, null, null, null, null];
+        Object.keys(squad.slots).forEach((key) => {
+          const idx = parseInt(key);
+          if (idx >= 0 && idx < 5) {
+            newSlots[idx] = squad.slots[key];
+          }
+        });
+        squad.slots = newSlots;
+      }
+    });
+
+    db = data;
+  } catch (e) {
+    console.error("Local Storage Daten korrupt, setze zurück:", e);
+    // data bleibt auf dem Default-Wert, Datenbank wird quasi resettet
+  }
 }
 
 function openHeroModal(slotIdx) {
@@ -195,7 +214,9 @@ function renderHeroStorage(forceNerzi = false, isModal = false) {
     }
 
     card.innerHTML = `
-        <div class="relative overflow-hidden rounded-lg border border-gray-800 bg-gray-950 p-2 hover:border-blue-500 transition-all cursor-grab active:cursor-grabbing">
+        <div 
+            data-heroid="${hero.id}"
+            class="relative overflow-hidden rounded-lg border border-gray-800 bg-gray-950 p-2 hover:border-blue-500 transition-all cursor-grab active:cursor-grabbing">
             <div class="w-full h-16 flex items-center justify-center mb-1">
                 <img src="img/${hero.id}.png" 
                      onerror="this.src='https://emojicdn.elk.sh/🐢'; this.style.opacity='0.5'" 
@@ -215,18 +236,23 @@ function renderHeroStorage(forceNerzi = false, isModal = false) {
   }
 }
 
-function handleDragStart(e, heroId) {
+function handleDragStart(e, manualId) {
+  let heroId = manualId;
+
+  if (!heroId && e.target.dataset.heroId) {
+    heroId = e.target.dataset.heroId;
+  }
+
+  console.log(`handleDragStart: e.target.dataset: ${e.target.dataset.heroId} manualId: ${manualId} chosenHeroId: ${heroId}`);
+
+  if (!heroId) {
+    e.preventDefault();
+    return;
+  }
+
   e.dataTransfer.setData("heroId", heroId);
   e.dataTransfer.effectAllowed = "copy";
-
   e.target.style.opacity = "0.5";
-}
-
-function handleDragOver(e) {
-  // WICHTIG: Verhindert das Standardverhalten, damit "Drop" erlaubt wird
-  e.preventDefault();
-  e.dataTransfer.dropEffect = "move";
-  e.currentTarget.classList.add("drag-over");
 }
 
 function assignHeroToSlot(heroId, slotIdx) {
@@ -237,15 +263,15 @@ function assignHeroToSlot(heroId, slotIdx) {
   let savedStats = null;
 
   const currentSlotHero = db.squads[currentIdx].slots[slotIdx];
+  console.log(`assignHeroToSlot: heroId: ${heroId} slotIdx: ${slotIdx} heroBase: ${heroBase} currentSlotHero: ${currentSlotHero}`);
+
   if (currentSlotHero && currentSlotHero.id === heroId) {
     savedStats = currentSlotHero;
-    console.log("Held existiert hier schon - Werte werden behalten.");
   } else {
     for (const squad of db.squads) {
-      const found = squad.slots.find((s) => s.id === heroId);
+      const found = squad.slots.find((s) => s?.id === heroId);
       if (found) {
         savedStats = found;
-        console.log("Bekannten Helden gefunden - Werte werden übernommen.");
         break;
       }
     }
@@ -275,9 +301,9 @@ function assignHeroToSlot(heroId, slotIdx) {
 
 function handleDrop(e, slotIdx) {
   e.preventDefault();
-  const heroId = e.dataTransfer.getData("text/plain") || e.dataTransfer.getData("text");
+  const heroId = e.dataTransfer.getData("heroId");
+  console.log(`handleDrop: slotIdx: ${slotIdx} heroId: ${heroId}`);
 
-  // Einfach die zentrale Funktion rufen
   assignHeroToSlot(heroId, slotIdx);
 
   e.currentTarget.classList.remove("drag-over");
@@ -380,45 +406,72 @@ function refreshSquadGrid() {
     return;
   }
 
+  console.log(`refreshSquadGrid: currentIdx: ${db.currentSquadIdx} db.squads:${db.squads}`);
+
   if (!db.squads[db.currentSquadIdx]) {
-    console.warn("Ungültiger Squad-Index! Setze auf 0 zurück.");
-    switchSquad(0);
+    console.warn("Ungültiger Squad-Index! Setze auf 1 zurück.");
+    switchSquad(1);
   }
 
+  if (!db || !db.squads) {
+    console.error("Datenbank nicht initialisiert");
+    return;
+  }
   const currentSquad = db.squads[db.currentSquadIdx];
+
   currentSquad.slots.forEach((hero, idx) => {
-    const slot = document.getElementById(`slot-${idx}`);
-    if (!slot) return;
+    const currentSlot = document.getElementById(`slot-${idx}`);
+    if (!currentSlot) {
+      console.error("Current slot does not exist! HELP");
+      return;
+    }
 
     const placeholder = document.getElementById(`empty-slot-placeholder-${idx}`);
     const content = document.getElementById(`hero-content-${idx}`);
+
     const isEmpty = !hero || !hero.id;
 
     if (placeholder && content) {
       if (isEmpty) {
         placeholder.classList.remove("hidden");
         content.classList.add("hidden");
+
+        document.getElementById(`input-ex-${idx}`).value = 0;
+        document.getElementById(`input-pas-${idx}`).value = 1;
+        document.getElementById(`input-tac-${idx}`).value = 1;
+
+        console.log(`Slot ${idx} is empty. Resetting`);
+
+        delete currentSlot.dataset.heroId;
       } else {
         placeholder.classList.add("hidden");
         content.classList.remove("hidden");
+        currentSlot.dataset.heroId = hero.id;
 
-        // Hier füllen wir die Daten in dein HTML
-        document.getElementById(`hero-name-${idx}`).innerText = hero.name;
+        // --- A. TEXTE SETZEN ---
+        const nameEl = document.getElementById(`hero-name-${idx}`);
+        if (nameEl) nameEl.innerText = hero.name || "Unknown";
 
-        // Falls du das Bild-Element findest:
-        const mainImg = content.querySelector(".flex-1 img");
+        // --- B. BILDER SETZEN (Jetzt mit IDs!) ---
+        const mainImg = document.getElementById(`hero-img-${idx}`);
         if (mainImg) mainImg.src = `img/${hero.id}.png`;
 
-        // Splash Art im Hintergrund
-        const splashImg = content.querySelector(".hero-skew");
+        const splashImg = document.getElementById(`hero-splash-${idx}`);
         if (splashImg) splashImg.src = `img/${hero.id}.png`;
+
+        // --- C. INPUTS AKTUALISIEREN ---
+        // Das ist wichtig, damit die geladenen Daten auch in den Boxen stehen
+        // Wir nutzen || 0 oder || 1 als Fallback, falls in der DB nichts steht
+        const inputEx = document.getElementById(`input-ex-${idx}`);
+        if (inputEx) inputEx.value = hero.ex_lvl || 0;
+
+        const inputPas = document.getElementById(`input-pas-${idx}`);
+        if (inputPas) inputPas.value = hero.skills.passive || 1;
+
+        const inputTac = document.getElementById(`input-tac-${idx}`);
+        if (inputTac) inputTac.value = hero.skills.tactics || 1;
       }
     }
-
-    // slot.className = "squad-slot relative overflow-hidden aspect-[3/4] rounded-[2rem] border-2 border-blue-500 bg-black shadow-2xl";
-
-    const pDR = 0;
-    const eDR = 0;
   });
 
   // Abstand-Check (Desktop Fix)
@@ -426,14 +479,32 @@ function refreshSquadGrid() {
 }
 
 function removeFromSquad(slotIdx) {
-  // 1. Zugriff auf das aktuelle Squad
-  const squad = db.squads[currentSquad];
+  const squad = db.squads[db.currentSquadIdx];
 
   if (squad && squad.slots) {
-    // 2. Den Slot leeren
+    const currentSlotHero = squad.slots[slotIdx];
     squad.slots[slotIdx] = null;
 
-    // 3. Speichern im LocalStorage und UI aktualisieren
+      const newValues = currentSlotHero
+    ? {
+        ex_lvl: currentSlotHero.ex_lvl,
+        stars: currentSlotHero.stars || 0,
+        skills: { ...currentSlotHero.skills },
+      }
+    : {
+        ex_lvl: 0,
+        stars: 0,
+        skills: { tactics: 1, passive: 1 },
+      };
+
+    db.squads[db.currentSquadIdx].slots[slotIdx] = {
+    id: currentSlotHero.id,
+    name: currentSlotHero.name,
+    cat: currentSlotHero.cat,
+    ...newValues,
+  };
+
+
     saveAndRefresh();
 
     console.log(`Slot ${slotIdx} wurde geleert.`);
@@ -443,20 +514,26 @@ function removeFromSquad(slotIdx) {
 /**
  * UPDATER
  */
-function updateExLvl(slotId, val) {
+function updateExLvl(slotIdx, val) {
+  console.log(`updateExLvl slotId: ${slotIdx} val: ${val} currentSquad: ${db.currentSquadIdx}`);
+
   const v = Math.min(30, Math.max(1, parseInt(val) || 1));
-  db.squads[currentSquad].slots[slotId].ex_lvl = v;
+  db.squads[db.currentSquadIdx].slots[slotIdx].ex_lvl = v;
 
   // Skill Level automatisch korrigieren falls Weapon Level sinkt
   const maxSkill = v >= 30 ? 40 : 30;
-  const skills = db.squads[currentSquad].slots[slotId].skills;
+  const skills = db.squads[db.currentSquadIdx].slots[slotIdx].skills;
   if (skills.tactics > maxSkill) skills.tactics = maxSkill;
   if (skills.passive > maxSkill) skills.passive = maxSkill;
+
+  db.squads[db.currentSquadIdx].slots[slotIdx].skills = skills;
 
   saveAndRefresh();
 }
 
 function updateSkillLevel(slotIdx, type, value) {
+  console.log(`updateSkillLevel slotIdx: ${slotIdx} type: ${type} value: ${value} currentSquad: ${db.currentSquadIdx}`);
+
   let val = parseInt(value);
   if (isNaN(val) || val < 1) val = 1;
 
@@ -466,9 +543,17 @@ function updateSkillLevel(slotIdx, type, value) {
     return;
   }
 
+  if (type === "tactics_lvl") {
+    hero.skills.tactics = val;
+  } else if (type === "passive_lvl") {
+    hero.skills.passive = val;
+  }
+
+  db.squads[db.currentSquadIdx].slots[slotIdx] = hero;
+
   if (!hero.skills) hero.skills = {};
 
-  console.log(`Update Slot ${slotIdx}: ${type} ist jetzt Level ${val}`);
+  console.log(db.squads[db.currentSquadIdx].slots[slotIdx]);
 
   saveAndRefresh();
 }
@@ -486,7 +571,7 @@ function isHeroUsedAnywhere(id) {
 }
 
 function removeFromSlot(slotId) {
-  delete db.squads[currentSquad].slots[slotId];
+  delete db.squads[db.currentSquadIdx].slots[slotId];
   saveAndRefresh();
 }
 function updateBaseDR() {
@@ -496,13 +581,13 @@ function updateBaseDR() {
 
 function switchSquad(n) {
   db.currentSquadIdx = n;
+  console.log(`switchSquad: ${db.currentSquadIdx}`);
 
-  currentSquad = n;
   for (let i = 0; i < 3; i++) {
-    const btn = document.getElementById(`squad-btn-${i}`);
+    const btn = document.getElementById(`select-squad-${i}`);
+    console.log(btn);
     if (btn) {
-      // WICHTIG: Nur ausführen, wenn der Button existiert!
-      if (i === idx) {
+      if (i === n) {
         btn.classList.add("bg-blue-600", "text-white");
         btn.classList.remove("text-gray-500");
       } else {
@@ -512,7 +597,34 @@ function switchSquad(n) {
     }
   }
 
+  updateSquadSelectorUI(n);
   saveAndRefresh();
+}
+
+function updateSquadSelectorUI(activeIdx) {
+  const buttons = document.querySelectorAll(".squad-btn");
+
+  // Definition der Tailwind-Klassen für die Zustände
+  // Aktiv: Blaues Leuchten, weißer Text, leichter Schatten
+  const activeClasses = ["bg-blue-600", "text-white", "shadow-md", "shadow-blue-900/20", "border-blue-500/50"];
+
+  // Inaktiv: Grau, transparent, Hover-Effekt
+  const inactiveClasses = ["text-gray-400", "hover:bg-white/5", "hover:text-gray-200", "border-transparent"];
+
+  buttons.forEach((btn) => {
+    // Index aus dem Data-Attribut lesen (string zu int konvertieren)
+    const btnIdx = parseInt(btn.dataset.idx);
+
+    if (btnIdx === activeIdx) {
+      // Button ist AKTIV
+      btn.classList.add(...activeClasses);
+      btn.classList.remove(...inactiveClasses);
+    } else {
+      // Button ist INAKTIV
+      btn.classList.add(...inactiveClasses);
+      btn.classList.remove(...activeClasses);
+    }
+  });
 }
 
 function saveAndRefresh() {
@@ -551,7 +663,7 @@ function showToast(message, type = "error") {
 
 function clearFormation() {
   if (confirm("Clear this squad?")) {
-    db.squads[currentSquad].slots = {};
+    db.squads[db.currentSquadIdx].slots = {};
     saveAndRefresh();
   }
 }
@@ -563,7 +675,7 @@ function updateSquadButtons() {
       btn.innerText = getSquadName(id);
 
       // Aktiven Status optisch beibehalten
-      if (id === currentSquad) {
+      if (id === db.currentSquadIdx) {
         btn.classList.add("bg-blue-600", "text-white");
         btn.classList.remove("text-gray-400");
       } else {
@@ -596,7 +708,6 @@ function setFilter(type) {
 function filterHeroes() {
   searchQuery = document.getElementById("hero-search").value.toLowerCase();
 
-  // Wir rufen renderHeroStorage auf, aber dieses Mal muss die Funktion filtern
   renderHeroStorage(window.lastNerziState || false);
 }
 
@@ -675,7 +786,7 @@ function formatDRString(value, prefix) {
 }
 
 function updateMetaStatus() {
-  const squad = db.squads[currentSquad];
+  const squad = db.squads[db.currentSquadIdx];
   if (!squad || !squad.slots) return;
 
   // SICHERHEITS-CHECK: Falls slots ein Objekt ist, wandle es in ein Array um
