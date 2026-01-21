@@ -43,12 +43,24 @@ export interface GlobalStat {
   level: number;
   calculatedPhysicalReduction: number;
   calculatedEnergyReduction: number;
+  description: string;
 }
 
 export interface GlobalBaseStats {
-  sf_tech_1: GlobalStat;
-  sf_tech_2: GlobalStat;
+  sf_advanced_protection_1: GlobalStat;
+  sf_advanced_protection_2: GlobalStat;
+
   drone_lvl: GlobalStat;
+
+  drone_quantum_chip_ac_lvl: GlobalStat;
+  drone_memory_chip_ac_lvl: GlobalStat;
+
+  drone_quantum_chip_missile_lvl: GlobalStat;
+  drone_memory_chip_missile_lvl: GlobalStat;
+
+  drone_quantum_chip_tank_lvl: GlobalStat;
+  drone_memory_chip_tank_lvl: GlobalStat;
+
   other_red: GlobalStat;
 }
 

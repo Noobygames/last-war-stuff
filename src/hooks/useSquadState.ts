@@ -20,10 +20,16 @@ const initialDb: AppDB = {
     { name: "Squad 3", slots: Array.from({ length: 5 }, createEmptySlot) },
   ],
   globalBaseStats: {
-    sf_tech_1: { level: 0, calculatedPhysicalReduction: 0, calculatedEnergyReduction: 0 },
-    sf_tech_2: { level: 0, calculatedPhysicalReduction: 0, calculatedEnergyReduction: 0 },
-    drone_lvl: { level: 0, calculatedPhysicalReduction: 0, calculatedEnergyReduction: 0 },
-    other_red: { level: 0, calculatedPhysicalReduction: 0, calculatedEnergyReduction: 0 },
+    sf_advanced_protection_1: { level: 0, calculatedPhysicalReduction: 0, calculatedEnergyReduction: 0, description: "Advanced Protection Node 1: Special Forces Technologie" },
+    sf_advanced_protection_2: { level: 0, calculatedPhysicalReduction: 0, calculatedEnergyReduction: 0, description: "Advanced Protection Node 2: Special Forces Technologie" },
+    drone_lvl: { level: 0, calculatedPhysicalReduction: 0, calculatedEnergyReduction: 0, description: "Current Level of your drone" },
+    drone_quantum_chip_ac_lvl: { level: 0, calculatedPhysicalReduction: 0, calculatedEnergyReduction: 0, description: "Level of your Quantum Chip for AirCraft Heroes. (Middle Chip)" },
+    drone_memory_chip_ac_lvl: { level: 0, calculatedPhysicalReduction: 0, calculatedEnergyReduction: 0, description: "Level of your Memory Fission Chip for AirCraft Heroes. (Left Chip)" },
+    drone_quantum_chip_missile_lvl: { level: 0, calculatedPhysicalReduction: 0, calculatedEnergyReduction: 0, description: "Level of your Quantum Chip for Missile Heroes. (Middle Chip)" },
+    drone_memory_chip_missile_lvl: { level: 0, calculatedPhysicalReduction: 0, calculatedEnergyReduction: 0, description: "Level of your Memory Fission Chip for Missile Heroes. (Left Chip)" },
+    drone_quantum_chip_tank_lvl: { level: 0, calculatedPhysicalReduction: 0, calculatedEnergyReduction: 0, description: "Level of your Quantum Chip for Tank Heroes. (Middle Chip)" },
+    drone_memory_chip_tank_lvl: { level: 0, calculatedPhysicalReduction: 0, calculatedEnergyReduction: 0, description: "Level of your Memory Fission Chip for Tank Heroes. (Left Chip)" },
+    other_red: { level: 0, calculatedPhysicalReduction: 0, calculatedEnergyReduction: 0, description: "% of all other damage reduction, that does not have an input field in here" },
   },
   heroStats: {},
 };
@@ -35,7 +41,7 @@ export function useSquadState() {
       try {
         const parsed = JSON.parse(saved);
         if (parsed.squads && Array.isArray(parsed.squads)) {
-          parsed.squads.forEach((squad: { slots: (SlotData | null)[]; }) => {
+          parsed.squads.forEach((squad: { slots: (SlotData | null)[] }) => {
             if (Array.isArray(squad.slots)) {
               squad.slots = squad.slots.map((slot: SlotData | null) => slot || createEmptySlot());
             }
@@ -43,7 +49,7 @@ export function useSquadState() {
         }
 
         if (!parsed.squads) parsed.squads = initialDb.squads;
-        if (!parsed.globalBaseStats) parsed.globalBaseStats = initialDb.globalBaseStats;
+        parsed.globalBaseStats = { ...initialDb.globalBaseStats, ...(parsed.globalBaseStats || {}) };
         return parsed;
       } catch (e) {
         console.error("DB Load Error", e);
@@ -66,9 +72,12 @@ export function useSquadState() {
     if (key === "drone_lvl" && val >= 200) {
       phys = 5;
       ener = 5;
-    } else if (key.startsWith("sf_tech")) {
+    } else if (key.startsWith("sf_advanced_protection")) {
       phys = 1.5 * val;
       ener = 1.5 * val;
+    } else if (key.includes("chip")) {
+      phys = 0;
+      ener = 0;
     } else if (key === "other_red") {
       phys = val;
       ener = val;
@@ -138,7 +147,10 @@ export function useSquadState() {
       let savedStats: SlotData | undefined;
       for (const s of prev.squads) {
         const found = s.slots.find((slot) => slot?.id === heroId);
-        if (found) { savedStats = found; break; }
+        if (found) {
+          savedStats = found;
+          break;
+        }
       }
       if (!savedStats) savedStats = prev.heroStats?.[heroId];
 
@@ -155,7 +167,9 @@ export function useSquadState() {
         }
       }
 
-      const newValues = savedStats ? { ex_lvl: savedStats.ex_lvl, stars: savedStats.stars || 0, skills: { ...savedStats.skills } } : { ex_lvl: 0, stars: 0, skills: { tactics: 1, passive: 1 } };
+      const newValues = savedStats
+        ? { ex_lvl: savedStats.ex_lvl, stars: savedStats.stars || 0, skills: { ...savedStats.skills } }
+        : { ex_lvl: 0, stars: 0, skills: { tactics: 1, passive: 1 } };
       const currentSquadIdx = prev.currentSquadIdx;
       const currentSquad = { ...newSquads[currentSquadIdx] };
       const newSlots = [...currentSquad.slots];

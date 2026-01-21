@@ -16,7 +16,7 @@ const StatInput = ({ label, value, onChange, color }: { label: string; value: nu
   }[color];
 
   return (
-    <div className="flex items-center gap-1.5 sm:gap-2">
+    <div className="flex items-center gap-1.5 sm:gap-2 w-full">
       <div className={`w-1 h-2.5 sm:h-3 ${colors.dot} rounded-full flex-shrink-0`}></div>
       <label className="text-[8px] sm:text-[9px] font-bold text-gray-400 w-5 sm:w-6 uppercase">{label}</label>
       <input
@@ -176,14 +176,15 @@ export default function SquadSlot({ slotIdx }: SquadSlotProps) {
             </div>
 
             <div className="grid grid-cols-1 gap-1 sm:gap-1.5 bg-black/40 rounded-lg sm:rounded-xl p-1.5 sm:p-2 border border-white/5" onClick={(e) => e.stopPropagation()}>
-              <Tooltip text="The current Exclusive Weapon Level of the Hero. Influences the maximum Level of Skills and also the Damage Resistance">
+              <Tooltip text="The current Exclusive Weapon Level of the Hero. Influences the maximum Level of Skills and also the Damage Resistance" className="w-full">
                 <StatInput label="EW" value={hero.ex_lvl || 0} onChange={(val) => updateHeroSlot(slotIdx, { ex_lvl: parseInt(val, 10) || 0 })} color="blue" />
               </Tooltip>
 
-              <Tooltip text="The level of the passive skill. The bottom left skill.">
+              <Tooltip text="The level of the passive skill. The bottom left skill." className="w-full">
                 <StatInput label="Pas" value={hero.skills?.passive || 1} onChange={(val) => updateSkill(slotIdx, "passive_lvl", val)} color="purple" />
               </Tooltip>
-              <Tooltip text="The level of the tactics skill. The top right skill.">
+              
+              <Tooltip text="The level of the tactics skill. The top right skill." className="w-full">
                 <StatInput label="Tac" value={hero.skills?.tactics || 1} onChange={(val) => updateSkill(slotIdx, "tactics_lvl", val)} color="yellow" />
               </Tooltip>
             </div>

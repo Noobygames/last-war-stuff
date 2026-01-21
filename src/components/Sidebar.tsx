@@ -1,9 +1,9 @@
-import GlobalStatsInputs from './GlobalStatsInputs';
+import GlobalStatsInputs from "./GlobalStatsInputs";
 
 export default function Sidebar() {
   return (
-    <aside className="hidden xl:flex w-64 flex-shrink-0 bg-black/20 border-r border-surface-card flex-col p-6 space-y-8 overflow-y-auto">
+    <div className="hidden xl:flex flex-col gap-4 p-4 bg-surface-card border-r border-surface-border h-full overflow-y-auto custom-scrollbar w-64 flex-shrink-0">
       <GlobalStatsInputs idPrefix="sidebar" />
-    </aside>
+    </div>
   );
 }

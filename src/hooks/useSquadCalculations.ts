@@ -41,9 +41,25 @@ export function useSquadCalculations(db: AppDB) {
 
   const squadDRStats = useMemo(() => {
     const baseStats = db.globalBaseStats;
-    const globalPhys = baseStats.drone_lvl.calculatedPhysicalReduction + baseStats.sf_tech_1.calculatedPhysicalReduction + baseStats.sf_tech_2.calculatedPhysicalReduction + baseStats.other_red.calculatedPhysicalReduction;
-    const globalEner = baseStats.drone_lvl.calculatedEnergyReduction + baseStats.sf_tech_1.calculatedEnergyReduction + baseStats.sf_tech_2.calculatedEnergyReduction + baseStats.other_red.calculatedEnergyReduction;
-    return currentSquad.slots.map(() => ({ phys: globalPhys, ener: globalEner }));
+    const globalPhys = baseStats.drone_lvl.calculatedPhysicalReduction + baseStats.sf_advanced_protection_1.calculatedPhysicalReduction + baseStats.sf_advanced_protection_2.calculatedPhysicalReduction + baseStats.other_red.calculatedPhysicalReduction;
+    const globalEner = baseStats.drone_lvl.calculatedEnergyReduction + baseStats.sf_advanced_protection_1.calculatedEnergyReduction + baseStats.sf_advanced_protection_2.calculatedEnergyReduction + baseStats.other_red.calculatedEnergyReduction;
+    return currentSquad.slots.map((slot) => {
+      let phys = globalPhys;
+      let ener = globalEner;
+
+      if (slot.cat === "Tank") {
+        phys += baseStats.drone_quantum_chip_tank_lvl.calculatedPhysicalReduction + baseStats.drone_memory_chip_tank_lvl.calculatedPhysicalReduction;
+        ener += baseStats.drone_quantum_chip_tank_lvl.calculatedEnergyReduction + baseStats.drone_memory_chip_tank_lvl.calculatedEnergyReduction;
+      } else if (slot.cat === "Missile") {
+        phys += baseStats.drone_quantum_chip_missile_lvl.calculatedPhysicalReduction + baseStats.drone_memory_chip_missile_lvl.calculatedPhysicalReduction;
+        ener += baseStats.drone_quantum_chip_missile_lvl.calculatedEnergyReduction + baseStats.drone_memory_chip_missile_lvl.calculatedEnergyReduction;
+      } else if (slot.cat === "Aircraft") {
+        phys += baseStats.drone_quantum_chip_ac_lvl.calculatedPhysicalReduction + baseStats.drone_memory_chip_ac_lvl.calculatedPhysicalReduction;
+        ener += baseStats.drone_quantum_chip_ac_lvl.calculatedEnergyReduction + baseStats.drone_memory_chip_ac_lvl.calculatedEnergyReduction;
+      }
+
+      return { phys, ener };
+    });
   }, [db.globalBaseStats, currentSquad.slots]);
 
   const calculateDR = (slotIdx: number): DRStats => squadDRStats[slotIdx] || { phys: 0, ener: 0 };
